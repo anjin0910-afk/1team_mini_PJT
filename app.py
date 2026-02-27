@@ -783,8 +783,8 @@ with st.sidebar:
             }
         )
 
-        # 페이지 전환 로직
-        if st.session_state['current_page'] != selected:
+        # 페이지 전환 로직 (메뉴에 없는 페이지일 때는 덮어쓰지 않음)
+        if st.session_state['current_page'] in menu_options and st.session_state['current_page'] != selected:
             st.session_state['current_page'] = selected
             st.rerun()
 
@@ -841,6 +841,36 @@ if page == "📝 회원가입":
     st.markdown("LUMINA CAPITAL의 모든 프리미엄 자산관리 기능을 이용하시려면 회원가입을 진행해주세요.")
     st.markdown("---")
     
+    # ── 회원가입 성공 팝업 (form 바깥에서 정의해야 정상 동작) ──
+    @st.dialog("회원가입 성공!")
+    def show_signup_result():
+        st.success("✅ 회원가입이 완료되었습니다!")
+        
+        with st.status("외부 DB 서버(A_users_table.py) 연동 중...", expanded=True) as status:
+            try:
+                import subprocess
+                import sys
+                script_path = os.path.join(os.path.dirname(__file__), 'database_script', 'A_users_table.py')
+                
+                # 백그라운드 스크립트 실행. 서버 연동 시간을 극적으로 줄임.
+                subprocess.Popen([sys.executable, script_path])
+                
+                st.write("🌐 DB 동기화 백그라운드 스케줄링 완료")
+                status.update(label="DB 연동 완료 (백그라운드)", state="complete")
+                    
+            except subprocess.TimeoutExpired:
+                st.write("⚠️ DB 서버 응답이 너무 늦습니다. (타임아웃)")
+                status.update(label="DB 연동 타임아웃 (로컬 접속은 가능)", state="error")
+            except Exception as e:
+                st.write(f"⚠️ 예기치 않은 오류: {e}")
+                status.update(label="DB 연동 중 오류 발생", state="error")
+        
+        st.info("이제 왼쪽 메뉴에서 로그인을 진행해주세요.")
+        if st.button("로그인하러가기", use_container_width=True):
+            st.session_state['show_signup_dialog'] = False
+            st.session_state['current_page'] = "🏠 메인 대시보드"
+            st.rerun()
+
     col1, col2 = st.columns([1, 1])
     with col1:
         with st.form("signup_form_main"):
@@ -867,37 +897,12 @@ if page == "📝 회원가입":
                         "user_email": new_email
                     }
                     save_users(users)
-                    
-                    # 회원가입 및 DB 스크립트 실행 결과를 팝업으로 명확히 보여주기
-                    @st.dialog("회원가입 성공!")
-                    def show_signup_result():
-                        st.success("✅ 회원가입이 완료되었습니다!")
-                        
-                        with st.status("외부 DB 서버(A_users_table.py) 연동 중...", expanded=True) as status:
-                            try:
-                                import subprocess
-                                import sys
-                                script_path = os.path.join(os.path.dirname(__file__), 'database_script', 'A_users_table.py')
-                                
-                                # 백그라운드 스크립트 실행. 서버 연동 시간을 극적으로 줄임.
-                                subprocess.Popen([sys.executable, script_path])
-                                
-                                st.write("🌐 DB 동기화 백그라운드 스케줄링 완료")
-                                status.update(label="DB 연동 완료 (백그라운드)", state="complete")
-                                    
-                            except subprocess.TimeoutExpired:
-                                st.write("⚠️ DB 서버 응답이 너무 늦습니다. (타임아웃)")
-                                status.update(label="DB 연동 타임아웃 (로컬 접속은 가능)", state="error")
-                            except Exception as e:
-                                st.write(f"⚠️ 예기치 않은 오류: {e}")
-                                status.update(label="DB 연동 중 오류 발생", state="error")
-                        
-                        st.info("이제 왼쪽 메뉴에서 로그인을 진행해주세요.")
-                        if st.button("로그인하러가기", use_container_width=True):
-                            st.session_state['current_page'] = "🏠 메인 대시보드"
-                            st.rerun()
+                    st.session_state['show_signup_dialog'] = True
+                    st.rerun()
 
-                    show_signup_result()
+    # ── session_state 플래그로 다이얼로그 표시 (form rerun 이후 안전하게 호출) ──
+    if st.session_state.get('show_signup_dialog', False):
+        show_signup_result()
 
 # ============================================================
 # 🏠 메인 대시보드
@@ -958,30 +963,31 @@ elif page == "🏠 메인 대시보드":
     st.markdown("---")
 
     st.markdown("### 📈 오늘의 증시 (KOSPI / KOSDAQ)")
-    # 데이터 로드 (indices_df가 로드되었다고 가정)
-    # ── 1. 데이터 정의 및 더미 데이터 생성 로직 ──
-    import numpy as np
-    from datetime import datetime, timedelta
+    # ── 1. KOSPI/KOSDAQ 지수 데이터 로드 (네이버 금융 스크래핑) ──
+    from scrape_index import load_index_data, scrape_all_indices, save_index_data
 
-    # indices_df가 로드되지 않았거나 비어있는 경우 더미 데이터 생성
-    if 'indices_df' not in locals() or indices_df.empty:
-        # 그래프 모양 확인을 위한 100일치 가상 데이터 생성
-        test_dates = [(datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(100)]
-        test_dates.reverse()
-        
-        # 실제 지수와 유사한 랜덤 흐름 생성
-        np.random.seed(42) # 동일한 그래프 모양 유지를 위해 시드 고정
-        kp_sample = np.linspace(2450, 2580, 100) + np.random.normal(0, 15, 100)
-        kd_sample = np.linspace(810, 870, 100) + np.random.normal(0, 8, 100)
-        
-        df_kp = pd.DataFrame({'Date': test_dates, 'Close': kp_sample, '시장': 'KOSPI'})
-        df_kd = pd.DataFrame({'Date': test_dates, 'Close': kd_sample, '시장': 'KOSDAQ'})
-        
-        st.caption("✨ 현재 레이아웃 확인을 위한 **샘플 데이터**를 표시 중입니다. (실제 데이터 없음)")
+    indices_df = load_index_data()
+
+    # 데이터 파일이 없으면 자동 스크래핑
+    if indices_df.empty:
+        with st.spinner("📡 KOSPI/KOSDAQ 지수 데이터 수집 중..."):
+            indices_df = scrape_all_indices(pages=10)
+            if not indices_df.empty:
+                save_index_data(indices_df)
+
+    if not indices_df.empty:
+        df_kp = indices_df[indices_df['시장'] == 'KOSPI'].copy()
+        df_kd = indices_df[indices_df['시장'] == 'KOSDAQ'].copy()
     else:
-        # 실제 데이터가 존재하는 경우 필터링
-        df_kp = indices_df[indices_df['시장'] == 'KOSPI']
-        df_kd = indices_df[indices_df['시장'] == 'KOSDAQ']
+        # 스크래핑도 실패한 경우 최소 폴백 데이터
+        import numpy as np
+        from datetime import datetime, timedelta
+        test_dates = [(datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(30)]
+        test_dates.reverse()
+        np.random.seed(42)
+        df_kp = pd.DataFrame({'Date': test_dates, 'Close': np.linspace(2500, 2550, 30) + np.random.normal(0, 10, 30), '시장': 'KOSPI'})
+        df_kd = pd.DataFrame({'Date': test_dates, 'Close': np.linspace(830, 850, 30) + np.random.normal(0, 5, 30), '시장': 'KOSDAQ'})
+        st.caption("⚠️ 지수 데이터 수집에 실패하여 샘플 데이터를 표시합니다.")
     
     # ── 2. 레이아웃 분리 (2개의 컬럼 생성) ──
     col_chart1, col_chart2 = st.columns(2)
