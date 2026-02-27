@@ -53,7 +53,7 @@ if 'logged_in' not in st.session_state:
 if 'username' not in st.session_state:
     st.session_state['username'] = ""
 if 'current_page' not in st.session_state:
-    st.session_state['current_page'] = "🏠 메인 대시보드"
+    st.session_state['current_page'] = "메인 대시보드"
 
 # 자동 로그아웃 기능을 제거했습니다.
 
@@ -743,17 +743,21 @@ with st.sidebar:
     from streamlit_option_menu import option_menu
 
     if 'current_page' not in st.session_state:
-        st.session_state['current_page'] = "🏠 메인 대시보드"
+        st.session_state['current_page'] = "메인 대시보드"
     # --- 사이드바 메뉴 섹션 ---
     with st.sidebar:
         
-        menu_options = ["🏠 메인 대시보드", "📋 투자 성향 설문", "⭐ 맞춤 종목 추천",
-                        "📈 분석 신호", "📰 종목 뉴스", "📧 뉴스레터"]
+        menu_options = ["메인 대시보드", "투자 성향 설문", "맞춤 종목 추천",
+                        "분석 신호", "종목 뉴스", "뉴스레터"]
         
+        # 아이콘 설정
+        menu_icons = ["house", "clipboard-check", "star", "graph-up", "newspaper", "envelope"]
+
         # option_menu 생성 (빨간 선 제거)
         selected = option_menu(
             menu_title=None,
             options=menu_options,
+            icons=menu_icons,
             menu_icon="cast",
             default_index=menu_options.index(st.session_state['current_page']) if st.session_state['current_page'] in menu_options else 0,
             styles={
@@ -894,7 +898,7 @@ if page == "📝 회원가입":
                         
                         st.info("이제 왼쪽 메뉴에서 로그인을 진행해주세요.")
                         if st.button("로그인하러가기", use_container_width=True):
-                            st.session_state['current_page'] = "🏠 메인 대시보드"
+                            st.session_state['current_page'] = "메인 대시보드"
                             st.rerun()
 
                     show_signup_result()
@@ -902,7 +906,7 @@ if page == "📝 회원가입":
 # ============================================================
 # 🏠 메인 대시보드
 # ============================================================
-elif page == "🏠 메인 대시보드":
+elif page == "메인 대시보드":
     st.markdown("# 🏠 시장 개요 대시보드")
 
     # ── 초보자 용어 설명 ──
@@ -1432,7 +1436,7 @@ elif page == "🏠 메인 대시보드":
 # ============================================================
 # 📋 투자 성향 설문
 # ============================================================
-elif page == "📋 투자 성향 설문":
+elif page == "투자 성향 설문":
     st.markdown("# 📋 투자 성향 진단")
     st.markdown(
         "> 한양증권 투자성향진단 기준 **11문항**으로 구성된 설문입니다.\n"
@@ -1456,7 +1460,7 @@ elif page == "📋 투자 성향 설문":
             answers[q['id']] = selected
             st.markdown("")
 
-        st.markdown("### 📧 뉴스레터 구독")
+        st.markdown("### 뉴스레터 구독")
         newsletter_opt = st.radio(
             "이메일로 뉴스레터 구독 받으시겠습니까?",
             options=["예", "아니오"],
@@ -1523,7 +1527,7 @@ elif page == "📋 투자 성향 설문":
         time.sleep(1) # 유저가 토스트 메시지/상태창을 볼 아주 잠깐의 여유 제공
         
         # 라디오 버튼 UI 동기화를 위해 session_state 처리
-        st.session_state['current_page'] = "⭐ 맞춤 종목 추천"
+        st.session_state['current_page'] = "맞춤 종목 추천"
         if 'menu_radio' in st.session_state:
             del st.session_state['menu_radio']
         st.rerun()
@@ -1576,14 +1580,14 @@ elif page == "📋 투자 성향 설문":
                     )
 
         st.markdown("")
-        st.info("👈 좌측 메뉴에서 **⭐ 맞춤 종목 추천**을 선택하시면 추천 결과를 확인할 수 있습니다.")
+        st.info("👈 좌측 메뉴에서 **맞춤 종목 추천**을 선택하시면 추천 결과를 확인할 수 있습니다.")
 
 
 # ============================================================
 # ⭐ 맞춤 종목 추천
 # ============================================================
-elif page == "⭐ 맞춤 종목 추천":
-    st.markdown("# ⭐ 맞춤 종목 추천")
+elif page == "맞춤 종목 추천":
+    st.markdown("# 맞춤 종목 추천")
     # 로그인 체크
     if not st.session_state.get('logged_in', False):
         @st.dialog("로그인 안내")
@@ -1591,7 +1595,7 @@ elif page == "⭐ 맞춤 종목 추천":
             st.warning("⚠️ 맞춤 종목 추천 서비스는 로그인이 필요합니다.")
             st.info("좌측 사이드바에서 로그인 후 이용해 주세요.")
             if st.button("홈으로 돌아가기", use_container_width=True):
-                st.session_state['current_page'] = "🏠 메인 대시보드"
+                st.session_state['current_page'] = "메인 대시보드"
                 st.rerun()
                 
         show_login_dialog()
@@ -1994,7 +1998,7 @@ elif page == "⭐ 맞춤 종목 추천":
 # ============================================================
 # 📰 종목 뉴스
 # ============================================================
-elif page == "📰 종목 뉴스":
+elif page == "종목 뉴스":
     st.markdown("# 📰 종목 관련 뉴스")
 
     if news_df.empty:
@@ -2045,7 +2049,7 @@ elif page == "📰 종목 뉴스":
 # ============================================================
 # 📈 분석 신호 (BUY / HOLD / SELL)
 # ============================================================
-elif page == "📈 분석 신호":
+elif page == "분석 신호":
     st.markdown("# 📈 종목별 분석 신호")
 
     if signals_df.empty:
@@ -2237,7 +2241,7 @@ elif page == "📈 분석 신호":
 # ============================================================
 # 📧 뉴스레터 미리보기
 # ============================================================
-elif page == "📧 뉴스레터":
+elif page == "뉴스레터":
     st.markdown("# 📧 투자 뉴스레터 미리보기")
     
     # 로그인 체크
@@ -2247,7 +2251,7 @@ elif page == "📧 뉴스레터":
             st.warning("⚠️ 뉴스레터 구독 및 열람은 로그인이 필요합니다.")
             st.info("좌측 사이드바에서 로그인 후 이용해 주세요.")
             if st.button("홈으로 돌아가기", key="newsletter_login_home_btn"):
-                st.session_state['current_page'] = "🏠 메인 대시보드"
+                st.session_state['current_page'] = "메인 대시보드"
                 if 'menu_radio' in st.session_state:
                     del st.session_state['menu_radio']
                 st.rerun()
